@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 def charger_donnees(chemin_x: str, chemin_y: str):
     try:
@@ -27,18 +28,31 @@ def nettoyer_donnees(df):
     
     df_propre = df.copy()
     
-    # 1. Nettoyage des températures
+    # 1. Correction des capteurs isolés défaillants par chambre
+    # Si un capteur a une différence > 100 avec ses DEUX voisins, 
+    # on le remplace par la moyenne de ses voisins pour sauver la ligne.
+    for i in range(1, 6):
+        c1 = f'T_data_{i}_1'
+        c2 = f'T_data_{i}_2'
+        c3 = f'T_data_{i}_3'
+        
+        # Identification des anomalies
+        cond_c1 = (abs(df_propre[c1] - df_propre[c2]) > 50) & (abs(df_propre[c1] - df_propre[c3]) > 50)
+        cond_c2 = (abs(df_propre[c2] - df_propre[c1]) > 50) & (abs(df_propre[c2] - df_propre[c3]) > 50)
+        cond_c3 = (abs(df_propre[c3] - df_propre[c1]) > 50) & (abs(df_propre[c3] - df_propre[c2]) > 50)
+        
+        # Remplacement par la moyenne des voisins (division entière pour rester en int64)
+        df_propre.loc[cond_c1, c1] = (df_propre.loc[cond_c1, c2] + df_propre.loc[cond_c1, c3]) // 2
+        df_propre.loc[cond_c2, c2] = (df_propre.loc[cond_c2, c1] + df_propre.loc[cond_c2, c3]) // 2
+        df_propre.loc[cond_c3, c3] = (df_propre.loc[cond_c3, c1] + df_propre.loc[cond_c3, c2]) // 2
+
+    # 2. Nettoyage des températures extrêmes restantes
+    # Utilisation de .clip() au lieu de .between() pour ne pas supprimer la ligne
     colonnes_temp = [colonne for colonne in df_propre.columns if colonne.startswith('T_')]
     for colonne in colonnes_temp:
-        df_propre = df_propre[df_propre[colonne] >= 0]
-        
-    # 2. Nettoyage de l'humidité et de la hauteur
-    colonnes_a_verifier_zero = ['H_data', 'AH_data'] 
-    for colonne in colonnes_a_verifier_zero:
-        if colonne in df_propre.columns:
-            df_propre = df_propre[df_propre[colonne] > 0]
+        df_propre[colonne] = df_propre[colonne].clip(lower=0, upper=1200)
             
-    # Suppression des lignes qui contiennent des cases vides
+    # 3. Suppression des lignes qui contiennent de vraies cases vides d'origine (NaN)
     df_propre = df_propre.dropna()
             
     print(f"Lignes après nettoyage : {len(df_propre)}")
@@ -76,3 +90,5 @@ if __name__ == "__main__":
         print("Formatage DatetimeIndex terminé pour les deux datasets.")
         # print(df_x_final.index) # Pour vérifier le format de l'index
         print(df_x_final.head(10))
+        print("\nStatistiques après nettoyage (pour vérifier que les extrêmes ont disparu) :")
+        print(df_x_final.describe().T[['min', 'max']])
