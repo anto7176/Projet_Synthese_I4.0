@@ -15,7 +15,10 @@ df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
 df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
 
 # Alignement : on garde uniquement les timestamps présents dans Y
-df = df_x_final.join(df_y_final, how='inner')
+# Décalage de Y d'1 heure en arrière — la qualité mesurée à H correspond aux capteurs de H-1
+df_y_decale = df_y_final.copy()
+df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)
+df = df_x_final.join(df_y_decale, how='inner')
 
 print(f"Lignes après alignement X/Y : {len(df)}")
 
