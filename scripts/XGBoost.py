@@ -7,37 +7,39 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ── Chargement & préparation ──────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# MODÈLE
+# ════════════════════════════════════════════════════════════════════
+
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
 df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
 
-# ── Décalage de Y d'1 heure en arrière ───────────────────────────
+# Décalage de Y d'1 heure en arrière
 df_y_decale = df_y_final.copy()
 df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)
 
 df = df_x_final.join(df_y_decale, how='inner')
 print(f"Lignes après alignement : {len(df)}")
 
-# ── 11 variables sélectionnées ────────────────────────────────────
+# 12 variables sélectionnées
 variables_selectionnees = [
     'T_data_3_3', 'T_data_3_1', 'T_data_3_2',
-    'H_data', 'T_data_5_2', 'T_data_5_1', 'T_data_5_3',
+    'H_data', 'T_data_2_3', 'T_data_5_2', 'T_data_5_1', 'T_data_5_3',
     'T_data_1_3', 'T_data_1_2', 'T_data_1_1', 'T_data_2_2'
 ]
 
 X = df[variables_selectionnees].astype(float)
 y = df['quality']
 
-# ── Train / Test split ────────────────────────────────────────────
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 print(f"Train : {X_train.shape[0]} lignes | Test : {X_test.shape[0]} lignes")
 print(f"Features : {X.shape[1]} variables\n")
 
-# ── Modèle de base (référence) ────────────────────────────────────
+# Modèle de base (référence)
 print("=== XGBoost de base ===")
 xgb_base = XGBRegressor(
     n_estimators=300, learning_rate=0.05, max_depth=5,
@@ -52,7 +54,7 @@ print(f"R²   : {r2_base:.4f}")
 print(f"MAE  : {mae_base:.4f}")
 print(f"RMSE : {rmse_base:.4f}")
 
-# ── Grille d'hyperparamètres ──────────────────────────────────────
+# Recherche des hyperparamètres
 param_grid = {
     'n_estimators':      [300, 500, 800, 1000],
     'max_depth':         [3, 4, 5, 6, 7, 8],
@@ -78,7 +80,6 @@ search = RandomizedSearchCV(
     random_state=42,
     n_jobs=-1
 )
-
 search.fit(X_train, y_train)
 
 print(f"\nMeilleurs paramètres :")
@@ -86,7 +87,7 @@ for k, v in search.best_params_.items():
     print(f"  {k}: {v}")
 print(f"Meilleur R² en CV : {search.best_score_:.4f}")
 
-# ── Évaluation du meilleur modèle ─────────────────────────────────
+# Évaluation du meilleur modèle
 xgb_best = search.best_estimator_
 y_pred_best = xgb_best.predict(X_test)
 r2_best   = r2_score(y_test, y_pred_best)
@@ -98,7 +99,6 @@ print(f"R²   : {r2_best:.4f}")
 print(f"MAE  : {mae_best:.4f}")
 print(f"RMSE : {rmse_best:.4f}")
 
-# ── 5 exemples ────────────────────────────────────────────────────
 print("\n── 5 exemples : réel vs prédit ──")
 exemples = pd.DataFrame({
     'Quality réelle':  y_test.values[:5],
@@ -107,7 +107,6 @@ exemples = pd.DataFrame({
 })
 print(exemples.to_string(index=False))
 
-# ── Résumé comparatif ─────────────────────────────────────────────
 print("\n══════════════════════════════════════════════")
 print("              COMPARAISON")
 print("══════════════════════════════════════════════")
@@ -117,7 +116,23 @@ print(f"{'MAE':20} {mae_base:>10.4f} {mae_best:>10.4f} {mae_best-mae_base:>+10.4
 print(f"{'RMSE':20} {rmse_base:>10.4f} {rmse_best:>10.4f} {rmse_best-rmse_base:>+10.4f}")
 print("══════════════════════════════════════════════")
 
-# ── Figure : base vs optimisé ─────────────────────────────────────
+importance_df = pd.DataFrame({
+    'variable':   X.columns,
+    'importance': xgb_best.feature_importances_
+}).sort_values('importance', ascending=False).reset_index(drop=True)
+
+importance_df['cumul_%'] = (
+    importance_df['importance'].cumsum() / importance_df['importance'].sum() * 100
+).round(1)
+
+print(f"\n── Importance des variables (modèle optimisé) ──")
+print(importance_df.to_string(index=False))
+
+# ════════════════════════════════════════════════════════════════════
+# AFFICHAGE
+# ════════════════════════════════════════════════════════════════════
+
+# Figure 1 : Base vs Optimisé
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 for ax, y_pred, label, color in zip(
     axes,
@@ -131,25 +146,13 @@ for ax, y_pred, label, color in zip(
     ax.plot(lim, lim, 'k--', linewidth=1)
     ax.set(title=label, xlabel='Quality réelle', ylabel='Quality prédite')
 
-plt.suptitle('XGBoost — Base vs Hyperparamètres optimisés (11 variables + décalage 1h)', fontsize=12)
+plt.suptitle('XGBoost — Base vs Hyperparamètres optimisés (12 variables + décalage 1h)', fontsize=12)
 plt.tight_layout()
 plt.savefig("fig_xgboost_optimise.png", dpi=150, bbox_inches='tight')
 plt.show()
 print("[Saved] fig_xgboost_optimise.png")
 
-# ── Importance des variables ──────────────────────────────────────
-importance_df = pd.DataFrame({
-    'variable':   X.columns,
-    'importance': xgb_best.feature_importances_
-}).sort_values('importance', ascending=False).reset_index(drop=True)
-
-importance_df['cumul_%'] = (
-    importance_df['importance'].cumsum() / importance_df['importance'].sum() * 100
-).round(1)
-
-print(f"\n── Importance des variables (modèle optimisé) ──")
-print(importance_df.to_string(index=False))
-
+# Figure 2 : Pareto importance des variables
 fig, ax1 = plt.subplots(figsize=(10, 5))
 x = np.arange(len(importance_df))
 ax1.bar(x, importance_df['importance'], color='#D7263D', alpha=0.85)

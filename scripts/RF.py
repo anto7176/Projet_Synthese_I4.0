@@ -7,14 +7,15 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ── Chargement & préparation ──────────────────────────────────────
-# ── Chargement & préparation ──────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# MODÈLE
+# ════════════════════════════════════════════════════════════════════
+
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
 df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
 
-# Alignement : on garde uniquement les timestamps présents dans Y
 # Décalage de Y d'1 heure en arrière — la qualité mesurée à H correspond aux capteurs de H-1
 df_y_decale = df_y_final.copy()
 df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)
@@ -25,25 +26,21 @@ print(f"Lignes après alignement X/Y : {len(df)}")
 X = df.drop(columns=['quality'])
 y = df['quality']
 
-# ── Train / Test split ────────────────────────────────────────────
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 print(f"Train : {X_train.shape[0]} lignes | Test : {X_test.shape[0]} lignes")
 
-# ── Entraînement ──────────────────────────────────────────────────
 rf = RandomForestRegressor(
-    n_estimators=200,   # nombre d'arbres
-    max_depth=None,     # arbres complets
+    n_estimators=200,
+    max_depth=None,
     min_samples_leaf=2,
     random_state=42,
-    n_jobs=-1           # utilise tous les cœurs CPU
+    n_jobs=-1
 )
-
 rf.fit(X_train, y_train)
 print("Modèle entraîné ✓")
 
-# ── Évaluation ────────────────────────────────────────────────────
 y_pred = rf.predict(X_test)
 
 mae  = mean_absolute_error(y_test, y_pred)
@@ -55,7 +52,35 @@ print(f"MAE  (erreur moyenne)      : {mae:.3f}  (sur une échelle 0-100)")
 print(f"RMSE (erreur quadratique)  : {rmse:.3f}")
 print(f"R²   (variance expliquée)  : {r2:.3f}  (1.0 = parfait)")
 
-# ── Figure 1 : Réel vs Prédit ─────────────────────────────────────
+importance_df = pd.DataFrame({
+    'variable':   X_train.columns,
+    'importance': rf.feature_importances_
+}).sort_values('importance', ascending=False).reset_index(drop=True)
+
+importance_df['cumul_%'] = (
+    importance_df['importance'].cumsum() / importance_df['importance'].sum() * 100
+).round(1)
+
+print(f"\n── Importance des variables ──")
+print(importance_df.to_string(index=False))
+
+seuil_idx = (importance_df['cumul_%'] <= 80).sum()
+print(f"\n→ {seuil_idx} variables suffisent pour atteindre 80% de l'importance")
+print(f"→ Variables dispensables : {importance_df['variable'][seuil_idx:].tolist()}")
+
+print("\n── 5 exemples : réel vs prédit ──")
+exemples = pd.DataFrame({
+    'Quality réelle':  y_test.values[:5],
+    'Quality prédite': y_pred[:5].round(1),
+    'Écart':           (y_test.values[:5] - y_pred[:5]).round(1)
+})
+print(exemples.to_string(index=False))
+
+# ════════════════════════════════════════════════════════════════════
+# AFFICHAGE
+# ════════════════════════════════════════════════════════════════════
+
+# Figure 1 : Réel vs Prédit + résidus
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
 axes[0].scatter(y_test, y_pred, alpha=0.3, s=12, color='#4C72B0')
@@ -75,19 +100,7 @@ plt.savefig("fig_rf_evaluation.png", dpi=150, bbox_inches='tight')
 plt.show()
 print("[Saved] fig_rf_evaluation.png")
 
-# ── Figure 2 : Importance des variables (Pareto) ──────────────────
-importance_df = pd.DataFrame({
-    'variable':   X_train.columns,
-    'importance': rf.feature_importances_
-}).sort_values('importance', ascending=False).reset_index(drop=True)
-
-importance_df['cumul_%'] = (
-    importance_df['importance'].cumsum() / importance_df['importance'].sum() * 100
-).round(1)
-
-print(f"\n── Importance des variables ──")
-print(importance_df.to_string(index=False))
-
+# Figure 2 : Importance des variables (Pareto)
 fig, ax1 = plt.subplots(figsize=(12, 5))
 
 x = np.arange(len(importance_df))
@@ -103,20 +116,8 @@ ax2.set_ylabel("Importance cumulée (%)", color='#D7263D')
 ax2.set_ylim(0, 105)
 ax2.legend(fontsize=9)
 
-seuil_idx = (importance_df['cumul_%'] <= 80).sum()
-print(f"\n→ {seuil_idx} variables suffisent pour atteindre 80% de l'importance")
-print(f"→ Variables dispensables : {importance_df['variable'][seuil_idx:].tolist()}")
-
 ax1.set_title("Diagramme de Pareto — Importance des variables (Random Forest)", fontsize=12)
 plt.tight_layout()
 plt.savefig("fig_rf_pareto.png", dpi=150, bbox_inches='tight')
 plt.show()
 print("[Saved] fig_rf_pareto.png")
-
-print("\n── 5 exemples : réel vs prédit ──")
-exemples = pd.DataFrame({
-    'Quality réelle':  y_test.values[:5],
-    'Quality prédite': y_pred[:5].round(1),
-    'Écart':           (y_test.values[:5] - y_pred[:5]).round(1)
-})
-print(exemples.to_string(index=False))

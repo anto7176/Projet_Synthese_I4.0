@@ -2,24 +2,29 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split, RandomizedSearchCV, cross_val_score
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ── Chargement & préparation ──────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# MODÈLE
+# ════════════════════════════════════════════════════════════════════
+
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
 df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
 
-df = df_x_final.join(df_y_final, how='inner')
+df_y_decale = df_y_final.copy()
+df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)
+df = df_x_final.join(df_y_decale, how='inner')
 X = df.drop(columns=['quality']).astype(float)
 y = df['quality']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# ── Modèle de base (référence) ────────────────────────────────────
+# Modèle de base (référence)
 print("=== Modèle de base ===")
 rf_base = RandomForestRegressor(n_estimators=200, min_samples_leaf=2, random_state=42, n_jobs=-1)
 rf_base.fit(X_train, y_train)
@@ -31,7 +36,7 @@ print(f"R²   : {r2_base:.4f}")
 print(f"MAE  : {mae_base:.4f}")
 print(f"RMSE : {rmse_base:.4f}")
 
-# ── Grille d'hyperparamètres à explorer ──────────────────────────
+# Recherche des hyperparamètres
 param_grid = {
     'n_estimators':      [100, 200, 300, 500],
     'max_depth':         [None, 10, 20, 30],
@@ -41,8 +46,6 @@ param_grid = {
     'bootstrap':         [True, False],
 }
 
-# ── RandomizedSearchCV — cherche les meilleurs params ────────────
-# n_iter=30 → teste 30 combinaisons aléatoires (bon compromis vitesse/qualité)
 print("\n=== Recherche des hyperparamètres (patience, ça prend quelques minutes...) ===")
 rf = RandomForestRegressor(random_state=42, n_jobs=-1)
 
@@ -56,7 +59,6 @@ search = RandomizedSearchCV(
     random_state=42,
     n_jobs=-1
 )
-
 search.fit(X_train, y_train)
 
 print(f"\nMeilleurs paramètres trouvés :")
@@ -64,7 +66,7 @@ for k, v in search.best_params_.items():
     print(f"  {k}: {v}")
 print(f"Meilleur R² en CV : {search.best_score_:.4f}")
 
-# ── Évaluation du meilleur modèle sur le test set ────────────────
+# Évaluation du meilleur modèle
 rf_best = search.best_estimator_
 y_pred_best = rf_best.predict(X_test)
 r2_best   = r2_score(y_test, y_pred_best)
@@ -76,7 +78,6 @@ print(f"R²   : {r2_best:.4f}")
 print(f"MAE  : {mae_best:.4f}")
 print(f"RMSE : {rmse_best:.4f}")
 
-# ── Résumé comparatif ─────────────────────────────────────────────
 print("\n══════════════════════════════════════════")
 print("           COMPARAISON")
 print("══════════════════════════════════════════")
@@ -86,7 +87,10 @@ print(f"{'MAE':20} {mae_base:>10.4f} {mae_best:>10.4f} {mae_best-mae_base:>+10.4
 print(f"{'RMSE':20} {rmse_base:>10.4f} {rmse_best:>10.4f} {rmse_best-rmse_base:>+10.4f}")
 print("══════════════════════════════════════════")
 
-# ── Figure : base vs optimisé ─────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# AFFICHAGE
+# ════════════════════════════════════════════════════════════════════
+
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
 for ax, y_pred, label, color in zip(
