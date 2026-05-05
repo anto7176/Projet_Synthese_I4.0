@@ -4,50 +4,13 @@ from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
+# Importation directe de la DB formatée et sauvegardée
+from import_data_matrice import data_X_formatee, data_Y_formatee
 
 # ════════════════════════════════════════════════════════
-# CHARGEMENT
+# SPLIT
 # ════════════════════════════════════════════════════════
-df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
-df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
-df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
-
-df_y_decale = df_y_final.copy()
-df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)
-
-# ════════════════════════════════════════════════════════
-# PROCESS MATRIX — 12 variables, minutes 5 à 59
-# ════════════════════════════════════════════════════════
-VARIABLES = [
-    'T_data_3_3', 'T_data_3_1', 'T_data_3_2',
-    'H_data', 'T_data_5_2', 'T_data_5_1', 'T_data_5_3',
-    'T_data_1_3', 'T_data_1_2', 'T_data_1_1', 'T_data_2_2', 'T_data_2_3'
-]
-
-print("Construction de la process matrix...")
-df_x_pm = df_x_final[VARIABLES].copy()
-df_x_pm['_heure']  = df_x_final.index.floor('h')
-df_x_pm['_minute'] = df_x_final.index.minute
-df_x_pm = df_x_pm[df_x_pm['_minute'] < 60]
-
-df_pivot = df_x_pm.pivot_table(
-    index='_heure', columns='_minute',
-    values=VARIABLES, aggfunc='first'
-)
-df_pivot.columns = [f"{var}_m{int(m):02d}" for var, m in df_pivot.columns]
-df_pivot.index.name = 'date_time'
-
-df_y_tronque = df_y_decale.copy()
-df_y_tronque.index = (df_y_tronque.index - pd.Timedelta(minutes=5)).floor('h')
-
-df_final = df_pivot.join(df_y_tronque, how='inner').dropna()
-print(f"Process matrix : {df_final.shape[0]} lignes × {df_final.shape[1]-1} features")
-
-X = df_final.drop(columns=['quality']).astype(float)
-y = df_final['quality']
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(data_X_formatee, data_Y_formatee, test_size=0.2, random_state=42)
 
 # ════════════════════════════════════════════════════════
 # MEILLEURS PARAMÈTRES (trouvés par RandomizedSearchCV)
@@ -68,6 +31,7 @@ model = XGBRegressor(
     device='cuda'
 )
 
+print("Entraînement en cours...")
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
