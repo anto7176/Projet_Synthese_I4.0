@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
-from xgboost import XGBRegressor
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
@@ -29,7 +30,7 @@ print("Construction de la process matrix...")
 df_x_pm = df_x_final[VARIABLES].copy()
 df_x_pm['_heure']  = df_x_final.index.floor('h')
 df_x_pm['_minute'] = df_x_final.index.minute
-df_x_pm = df_x_pm[df_x_pm['_minute'] < 60]
+df_x_pm = df_x_pm[df_x_pm['_minute'] >= 5]
 
 df_pivot = df_x_pm.pivot_table(
     index='_heure', columns='_minute',
@@ -42,50 +43,39 @@ df_y_tronque = df_y_decale.copy()
 df_y_tronque.index = (df_y_tronque.index - pd.Timedelta(minutes=5)).floor('h')
 
 df_final = df_pivot.join(df_y_tronque, how='inner').dropna()
-print(f"Process matrix : {df_final.shape[0]} lignes × {df_final.shape[1]-1} features")
 
 X = df_final.drop(columns=['quality']).astype(float)
 y = df_final['quality']
 
+print(f"Dataset : {len(df_final)} lignes | {X.shape[1]} variables")
+
+# ════════════════════════════════════════════════════════
+# MODÈLE
+# ════════════════════════════════════════════════════════
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# ════════════════════════════════════════════════════════
-# MEILLEURS PARAMÈTRES (trouvés par RandomizedSearchCV)
-# ════════════════════════════════════════════════════════
-model = XGBRegressor(
-    n_estimators=2000,
-    learning_rate=0.01,
-    max_depth=7,
-    subsample=0.7,
-    colsample_bytree=0.3,
-    gamma=0,
-    reg_alpha=0,
-    reg_lambda=1,
-    min_child_weight=3,
-    random_state=42,
-    verbosity=0,
-    tree_method='hist',
-    device='cuda'
-)
+rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+rf.fit(X_train, y_train)
+y_pred = rf.predict(X_test)
 
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-
-# ════════════════════════════════════════════════════════
-# RÉSULTATS
-# ════════════════════════════════════════════════════════
+r2   = r2_score(y_test, y_pred)
 mae  = mean_absolute_error(y_test, y_pred)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-r2   = r2_score(y_test, y_pred)
 
-print(f"\nR²   : {r2:.4f}")
-print(f"MAE  : {mae:.4f}")
-print(f"RMSE : {rmse:.4f}")
+print(f"R²   = {r2:.3f}")
+print(f"MAE  = {mae:.2f}")
+print(f"RMSE = {rmse:.2f}")
 
-print("\n── 5 exemples : réel vs prédit ──")
-exemples = pd.DataFrame({
-    'Réel':   y_test.values[:5].round(1),
-    'Prédit': y_pred[:5].round(1),
-    'Écart':  (y_test.values[:5] - y_pred[:5]).round(1)
-})
-print(exemples.to_string(index=False))
+# ════════════════════════════════════════════════════════
+# AFFICHAGE
+# ════════════════════════════════════════════════════════
+plt.figure(figsize=(7, 7))
+plt.scatter(y_test, y_pred, alpha=0.3, s=12, color='#4C72B0')
+plt.plot([0, 100], [0, 100], 'r--', linewidth=1)
+plt.xlabel("Quality réelle")
+plt.ylabel("Quality prédite")
+plt.title(f"Random Forest — R²={r2:.3f} | MAE={mae:.2f} | RMSE={rmse:.2f}")
+plt.tight_layout()
+plt.savefig("fig_rf1.png", dpi=150, bbox_inches='tight')
+plt.show()
+print("[Saved] fig_rf1.png")
