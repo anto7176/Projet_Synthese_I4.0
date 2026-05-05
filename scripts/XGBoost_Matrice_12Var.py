@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -53,3 +54,17 @@ exemples = pd.DataFrame({
     'Écart':  (y_test.values[:5] - y_pred[:5]).round(1)
 })
 print(exemples.to_string(index=False))
+
+# ════════════════════════════════════════════════════════
+# AFFICHAGE
+# ════════════════════════════════════════════════════════
+plt.figure(figsize=(7, 7))
+plt.scatter(y_test, y_pred, alpha=0.3, s=12, color='#4C72B0')
+plt.plot([0, 100], [0, 100], 'r--', linewidth=1)
+plt.xlabel("Quality réelle")
+plt.ylabel("Quality prédite")
+plt.title(f"XGBoost — R²={r2:.3f} | MAE={mae:.2f} | RMSE={rmse:.2f}")
+plt.tight_layout()
+plt.savefig("fig_XGBoost1.png", dpi=150, bbox_inches='tight')
+plt.show()
+print("[Saved] fig_XGBoost1.png")

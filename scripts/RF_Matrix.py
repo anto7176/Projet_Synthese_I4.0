@@ -17,7 +17,7 @@ print(f"Dataset : {len(data_X_formatee)} lignes | {data_X_formatee.shape[1]} var
 # ════════════════════════════════════════════════════════
 X_train, X_test, y_train, y_test = train_test_split(data_X_formatee, data_Y_formatee, test_size=0.2, random_state=42)
 
-rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+rf = RandomForestRegressor(n_estimators=300, min_samples_split= 2,  min_samples_leaf= 1,max_features= 0.5,n_jobs=-1)
 
 print("Entraînement du modèle Random Forest en cours...")
 rf.fit(X_train, y_train)
