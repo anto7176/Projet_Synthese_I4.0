@@ -46,3 +46,11 @@ Si oui, il faut faire l'hypothèse que les mesures sont réalisées directement 
 
 En utilisant les H-1 et H-2 : R² = 0.9726, MAE  : 1.9815, RMSE : 2.7334
 
+
+
+faire intervalle pour le XGBoost
+
+essayer de trouver pk sa montre, pk sa baisse
+
+voir si lien avec les mois de l'année(temp,humidite)
+
