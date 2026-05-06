@@ -5,6 +5,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
 # ════════════════════════════════════════════════════════════════════

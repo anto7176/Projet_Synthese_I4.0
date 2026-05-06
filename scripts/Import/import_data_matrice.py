@@ -1,80 +1,13 @@
 import os
+import sys
 import pandas as pd
-import numpy as np
 
-def charger_donnees(chemin_x: str, chemin_y: str):
-    try:
-        donnees_x = pd.read_csv(chemin_x)
-        print(f"Succès : {chemin_x} a été importé avec {len(donnees_x)} lignes.")
-    except FileNotFoundError:
-        print(f"Erreur : Le fichier {chemin_x} est introuvable.")
-        donnees_x = None
-
-    try:
-        donnees_y = pd.read_csv(chemin_y)
-        print(f"Succès : {chemin_y} a été importé avec {len(donnees_y)} lignes.")
-    except FileNotFoundError:
-        print(f"Erreur : Le fichier {chemin_y} est introuvable.")
-        donnees_y = None
-
-    return donnees_x, donnees_y
-
-
-def nettoyer_donnees(df):
-    if df is None:
-        return None
-
-    print(f"--- Début du nettoyage ---")
-    print(f"Lignes avant nettoyage : {len(df)}")
-
-    df_propre = df.copy()
-
-    for i in range(1, 6):
-        c1 = f'T_data_{i}_1'
-        c2 = f'T_data_{i}_2'
-        c3 = f'T_data_{i}_3'
-
-        cond_c1 = (abs(df_propre[c1] - df_propre[c2]) > 50) & (abs(df_propre[c1] - df_propre[c3]) > 50)
-        cond_c2 = (abs(df_propre[c2] - df_propre[c1]) > 50) & (abs(df_propre[c2] - df_propre[c3]) > 50)
-        cond_c3 = (abs(df_propre[c3] - df_propre[c1]) > 50) & (abs(df_propre[c3] - df_propre[c2]) > 50)
-
-        df_propre.loc[cond_c1, c1] = (df_propre.loc[cond_c1, c2] + df_propre.loc[cond_c1, c3]) // 2
-        df_propre.loc[cond_c2, c2] = (df_propre.loc[cond_c2, c1] + df_propre.loc[cond_c2, c3]) // 2
-        df_propre.loc[cond_c3, c3] = (df_propre.loc[cond_c3, c1] + df_propre.loc[cond_c3, c2]) // 2
-
-    colonnes_temp = [colonne for colonne in df_propre.columns if colonne.startswith('T_')]
-    for colonne in colonnes_temp:
-        df_propre[colonne] = df_propre[colonne].clip(lower=0, upper=1200)
-
-    df_propre = df_propre.dropna()
-    print(f"Lignes après nettoyage : {len(df_propre)}")
-    print(f"Lignes supprimées : {len(df) - len(df_propre)}\n")
-
-    return df_propre
-
-
-def normaliser_qualite(df_y, colonne='quality'):
-    if df_y is None:
-        return None
-    df_norm = df_y.copy()
-    q_min = df_norm[colonne].min()
-    q_max = df_norm[colonne].max()
-    df_norm[colonne] = (df_norm[colonne] - q_min) / (q_max - q_min) * 100
-    return df_norm
-
-
-def formater_index_temporel(df, nom_colonne):
-    if df is None:
-        return None
-    df[nom_colonne] = pd.to_datetime(df[nom_colonne])
-    df = df.set_index(nom_colonne)
-    df = df.sort_index()
-    return df
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
 
 def creer_process_matrix(df_x_final, df_y_final):
-    """Effectue la création de la matrice pivot et la jointure (traitement long)"""
-    print("⏳ Construction de la process matrix (pivot)...")
+    print("Construction de la process matrix (pivot)...")
     
     df_y_decale = df_y_final.copy()
     df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)

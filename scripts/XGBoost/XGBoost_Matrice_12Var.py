@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # Importation directe de la DB formatée et sauvegardée
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data_matrice import data_X_formatee, data_Y_formatee
 
 # ════════════════════════════════════════════════════════

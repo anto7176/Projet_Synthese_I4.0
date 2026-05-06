@@ -8,6 +8,9 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 # ════════════════════════════════════════════════════════
 # CHARGEMENT 
 # ════════════════════════════════════════════════════════
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data_matrice import data_X_formatee, data_Y_formatee
 
 print(f"Dataset : {len(data_X_formatee)} lignes | {data_X_formatee.shape[1]} variables")
