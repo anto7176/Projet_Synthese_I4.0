@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
 # ════════════════════════════════════════════════════════
-# VARIABLES — modifie cette liste pour tester
+# VARIABLES 
 # ════════════════════════════════════════════════════════
 VARIABLES = [
     'T_data_3_3',
