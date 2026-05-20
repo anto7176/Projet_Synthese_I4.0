@@ -9,10 +9,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from import_data_matrice import data_X_formatee, data_Y_formatee
 
 # ════════════════════════════════════════════════════════
-# AJOUT DES H-1 et H-2 et H-3 DE QUALITY
+# AJOUT DES H-1 et H-2 DE QUALITY
 # ════════════════════════════════════════════════════════
 df = data_X_formatee.copy()
-for lag in [1, 2, 3]:
+for lag in [1, 2]:
     df[f'quality_lag{lag}'] = data_Y_formatee.shift(lag)
 
 df = df.dropna()
@@ -21,8 +21,8 @@ y = data_Y_formatee.loc[df.index]
 # ════════════════════════════════════════════════════════
 # SPLIT TEMPOREL
 # ════════════════════════════════════════════════════════
-split      = int(len(df) * 0.8)
-val_split  = int(len(df) * 0.72)
+split     = int(len(df) * 0.8)
+val_split = int(len(df) * 0.72)
 
 X_train = df.iloc[:val_split]
 X_val   = df.iloc[val_split:split]
@@ -32,25 +32,26 @@ y_val   = y.iloc[val_split:split]
 y_test  = y.iloc[split:]
 
 # ════════════════════════════════════════════════════════
-# MODÈLE
+# MODÈLE — meilleurs hyperparamètres Optuna (RMSE val = 2.3693)
 # ════════════════════════════════════════════════════════
 model = XGBRegressor(
-    n_estimators=3000,
-    learning_rate=0.01,
-    max_depth=7,
-    subsample=0.7,
-    colsample_bytree=0.3,
-    min_child_weight=3,
-    early_stopping_rounds=50,
-    random_state=42,
-    verbosity=0,
-    tree_method='hist',
-    device='cuda'
+    n_estimators     = 1306,
+    learning_rate    = 0.0214113,
+    max_depth        = 6,
+    subsample        = 0.586508,
+    colsample_bytree = 0.816817,
+    min_child_weight = 4,
+    gamma            = 2.41974,
+    reg_alpha        = 3.35611e-05,
+    reg_lambda       = 4.34695e-08,
+    random_state     = 42,
+    verbosity        = 0,
+    tree_method      = 'hist',
+    device           = 'cuda',
 )
 
 print("Entraînement en cours...")
 model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=200)
-print(f"Meilleur n_estimators : {model.best_iteration}")
 
 y_pred = model.predict(X_test)
 
@@ -69,11 +70,12 @@ print(f"RMSE : {rmse:.4f}")
 # IMPORTANCE DES LAGS vs reste
 # ════════════════════════════════════════════════════════
 feat_imp = pd.Series(model.feature_importances_, index=X_train.columns)
-lag_cols = [f'quality_lag{i}' for i in [1,2,3]]
+lag_cols = ['quality_lag1', 'quality_lag2']
+
 print("\nImportance des lags quality :")
 print(feat_imp[lag_cols].round(4).to_string())
-print(f"\nImportance totale lags   : {feat_imp[lag_cols].sum():.4f}")
-print(f"Importance reste features: {feat_imp.drop(lag_cols).sum():.4f}")
+print(f"\nImportance totale lags    : {feat_imp[lag_cols].sum():.4f}")
+print(f"Importance reste features : {feat_imp.drop(lag_cols).sum():.4f}")
 
 # ════════════════════════════════════════════════════════
 # AFFICHAGE
@@ -87,3 +89,6 @@ plt.title(f"XGBoost + lags — R²={r2:.3f} | MAE={mae:.2f} | RMSE={rmse:.2f}")
 plt.tight_layout()
 plt.savefig("fig_XGBoost_lags.png", dpi=150, bbox_inches='tight')
 plt.show()
+
+import joblib
+joblib.dump(model, os.path.join(os.path.dirname(__file__), 'xgboost_model.pkl'))

@@ -128,7 +128,7 @@ Entraînement du modèle final (train + val)...
 
 R²   : 0.9755
 
-MAE  : 1.9168
+MAE  : 1.9168 = 5.09 échelle réelle
 
 RMSE : 2.5842
 
