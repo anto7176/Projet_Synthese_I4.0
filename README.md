@@ -46,7 +46,9 @@ Si oui, il faut faire l'hypothèse que les mesures sont réalisées directement 
 
 
 
-En utilisant les H-1 et H-2 : R² = 0.9726, MAE  : 1.9815, RMSE : 2.7334 avec ces param :model = 
+En utilisant les H-1 et H-2 : R² = 0.9726, MAE  : 1.9815, RMSE : 2.7334 avec ces param :
+
+model =
 
 XGBRegressor(
 
@@ -131,4 +133,16 @@ R²   : 0.9755
 MAE  : 1.9168 = 5.09 échelle réelle
 
 RMSE : 2.5842
+
+
+
+
+
+Pour le poster, enlever la temp pour les valeurs cles et la emttre a la fin pour percuter
+
+cahnger la problematique en mode : comment ameliorer une production de café
+
+rajouter des grains de café en image
+
+
 
