@@ -10,7 +10,6 @@ from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, f
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
 
-# ── Chargement et préparation ──────────────────────────────────────────────────
 df_x, df_y = charger_donnees(
     os.path.join(BASE_DIR, "data/data_X.csv"),
     os.path.join(BASE_DIR, "data/data_Y.csv"),
@@ -18,35 +17,29 @@ df_x, df_y = charger_donnees(
 
 df_x = nettoyer_donnees(df_x)
 df_y = normaliser_qualite(df_y, colonne='quality')
-
 df_x = formater_index_temporel(df_x, "date_time")
 df_y = formater_index_temporel(df_y, "date_time")
 
-# Température moyenne de toutes les chambres (agrégée à l'heure)
 cols_temp = [c for c in df_x.columns if c.startswith('T_')]
 df_temp_h = df_x[cols_temp].resample('h').mean()
 df_temp_h['temp_moy'] = df_temp_h.mean(axis=1)
 
-# Les timestamps de data_Y ne tombent pas nécessairement à HH:00 — on les floor à l'heure
+# Les timestamps de data_Y ne tombent pas nécessairement à HH:00
 df_y_h = df_y[['quality']].copy()
 df_y_h.index = df_y_h.index.floor('h')
 
-# Jointure interne quality ↔ température horaire
 df = df_y_h.join(df_temp_h['temp_moy'], how='inner').dropna()
 print(f"Données alignées : {len(df)} points ({df.index.min().date()} → {df.index.max().date()})")
 
-# ── Agrégation mensuelle pour la vue saisonnière ───────────────────────────────
 df_mensuel = df.resample('ME').agg({'quality': 'mean', 'temp_moy': 'mean'})
 
-# ── Corrélation globale ────────────────────────────────────────────────────────
 r, p = stats.pearsonr(df['temp_moy'], df['quality'])
 print(f"\nCorrélation de Pearson (quality vs temp_moy) : r = {r:.3f}  (p = {p:.2e})")
 
-# ── Figure 1 : séries temporelles superposées ─────────────────────────────────
+# ---- AFFICHAGE ----
 fig, axes = plt.subplots(3, 1, figsize=(14, 10), sharex=False)
 fig.suptitle("Qualité et température des chambres au fil du temps", fontsize=14, fontweight='bold')
 
-# --- (a) Quality horaire brute ---
 ax1 = axes[0]
 ax1.plot(df.index, df['quality'], color='#4C72B0', linewidth=0.6, alpha=0.7)
 ax1.set_ylabel("Qualité (normalisée 0–100)")
@@ -55,7 +48,6 @@ ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
 ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
 plt.setp(ax1.xaxis.get_majorticklabels(), rotation=30, ha='right')
 
-# --- (b) Température moyenne horaire ---
 ax2 = axes[1]
 ax2.plot(df.index, df['temp_moy'], color='#DD8452', linewidth=0.6, alpha=0.7)
 ax2.set_ylabel("Temp. moy. chambres (°C×10)")
@@ -64,7 +56,6 @@ ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
 ax2.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
 plt.setp(ax2.xaxis.get_majorticklabels(), rotation=30, ha='right')
 
-# --- (c) Moyennes mensuelles superposées sur deux axes ---
 ax3 = axes[2]
 ax3b = ax3.twinx()
 
@@ -91,10 +82,8 @@ plt.savefig(out1, dpi=150, bbox_inches='tight')
 plt.show()
 print(f"[Saved] {out1}")
 
-# ── Figure 2 : nuage de points quality vs température ─────────────────────────
 fig2, ax = plt.subplots(figsize=(7, 6))
 
-# Couleur selon le mois pour voir l'effet saisonnier
 mois = df.index.month
 scatter = ax.scatter(df['temp_moy'], df['quality'],
                      c=mois, cmap='hsv', alpha=0.15, s=2, linewidths=0)
@@ -103,7 +92,6 @@ cb.set_label("Mois")
 cb.set_ticklabels(['Jan','Fév','Mar','Avr','Mai','Jun',
                    'Jul','Aoû','Sep','Oct','Nov','Déc'])
 
-# Droite de régression
 slope, intercept, *_ = stats.linregress(df['temp_moy'], df['quality'])
 x_line = np.linspace(df['temp_moy'].min(), df['temp_moy'].max(), 200)
 ax.plot(x_line, slope * x_line + intercept, color='black', linewidth=1.5,
@@ -120,7 +108,6 @@ plt.savefig(out2, dpi=150, bbox_inches='tight')
 plt.show()
 print(f"[Saved] {out2}")
 
-# ── Résumé statistique par saison ─────────────────────────────────────────────
 def saison(m):
     if m in (12, 1, 2):  return 'Hiver'
     if m in (3, 4, 5):   return 'Printemps'

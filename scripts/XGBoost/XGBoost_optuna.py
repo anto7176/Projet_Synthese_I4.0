@@ -12,11 +12,8 @@ from import_data_matrice import data_X_formatee, data_Y_formatee
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-N_TRIALS = 150   # ← augmenter pour un search plus exhaustif (ex : 300)
+N_TRIALS = 150
 
-# ════════════════════════════════════════════════════════
-# CONSTRUCTION DU DATASET AVEC N LAGS
-# ════════════════════════════════════════════════════════
 
 def build_dataset(n_lags: int):
     df = data_X_formatee.copy()
@@ -36,9 +33,6 @@ def temporal_split(df, y):
         df.iloc[i_test:],      y.iloc[i_test:],
     )
 
-# ════════════════════════════════════════════════════════
-# FONCTION OBJECTIF OPTUNA
-# ════════════════════════════════════════════════════════
 
 def objective(trial):
     n_lags = trial.suggest_int('n_lags', 1, 6)
@@ -65,17 +59,13 @@ def objective(trial):
     model = XGBRegressor(**params)
     model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
 
-    # On sauvegarde le n_estimators optimal (trouvé par early stopping)
     trial.set_user_attr('best_iteration', model.best_iteration)
 
     y_pred_val = model.predict(X_val)
     return float(np.sqrt(mean_squared_error(y_val, y_pred_val)))
 
-# ════════════════════════════════════════════════════════
-# LANCEMENT DE L'OPTIMISATION
-# ════════════════════════════════════════════════════════
 
-print(f"Démarrage Optuna — {N_TRIALS} essais (GPU activé)...")
+print(f"Démarrage Optuna — {N_TRIALS} essais...")
 
 sampler = optuna.samplers.TPESampler(seed=42)
 study   = optuna.create_study(direction='minimize', sampler=sampler)
@@ -86,18 +76,11 @@ n_lags_best   = best_params.pop('n_lags')
 n_est_best    = study.best_trial.user_attrs['best_iteration']
 rmse_val_best = study.best_value
 
-print(f"\n{'═'*55}")
-print(f"  MEILLEURS PARAMÈTRES  (RMSE val = {rmse_val_best:.4f})")
-print(f"{'═'*55}")
+print(f"\nMeilleurs paramètres (RMSE val = {rmse_val_best:.4f})")
 print(f"  n_lags          : {n_lags_best}")
-print(f"  n_estimators    : {n_est_best}  (via early stopping)")
+print(f"  n_estimators    : {n_est_best}  (early stopping)")
 for k, v in best_params.items():
     print(f"  {k:<22}: {v:.6g}" if isinstance(v, float) else f"  {k:<22}: {v}")
-print(f"{'═'*55}\n")
-
-# ════════════════════════════════════════════════════════
-# MODÈLE FINAL  (entraîné sur train + val, évalué sur test)
-# ════════════════════════════════════════════════════════
 
 df_f, y_f = build_dataset(n_lags_best)
 X_tr, y_tr, X_val, y_val, X_test, y_test = temporal_split(df_f, y_f)
@@ -122,15 +105,12 @@ mae    = mean_absolute_error(y_test, y_pred)
 rmse   = np.sqrt(mean_squared_error(y_test, y_pred))
 r2     = r2_score(y_test, y_pred)
 
-print(f"\n── Résultats sur jeu de test ──")
+print(f"\nRésultats sur jeu de test :")
 print(f"R²   : {r2:.4f}")
 print(f"MAE  : {mae:.4f}")
 print(f"RMSE : {rmse:.4f}")
 
-# ════════════════════════════════════════════════════════
-# FIGURES
-# ════════════════════════════════════════════════════════
-
+# ---- AFFICHAGE ----
 fig, axes = plt.subplots(1, 3, figsize=(17, 5))
 fig.suptitle(
     f"XGBoost + Optuna — R²={r2:.4f} | MAE={mae:.2f} | RMSE={rmse:.2f}  "
@@ -138,14 +118,12 @@ fig.suptitle(
     fontsize=12, fontweight='bold'
 )
 
-# (1) Prédit vs réel
 axes[0].scatter(y_test, y_pred, alpha=0.3, s=12, color='#4C72B0')
 axes[0].plot([0, 100], [0, 100], 'r--', linewidth=1)
 axes[0].set_xlabel("Quality réelle")
 axes[0].set_ylabel("Quality prédite")
 axes[0].set_title("Prédit vs Réel (test)")
 
-# (2) Convergence de l'optimisation
 trial_values = [t.value for t in study.trials if t.value is not None]
 best_so_far  = pd.Series(trial_values).cummin()
 axes[1].plot(trial_values, color='#DD8452', linewidth=0.8, alpha=0.6, label='RMSE trial')
@@ -155,7 +133,6 @@ axes[1].set_ylabel("RMSE (validation)")
 axes[1].set_title("Convergence Optuna")
 axes[1].legend(fontsize=8)
 
-# (3) Top 15 features importantes
 feat_imp = pd.Series(final_model.feature_importances_, index=X_trainval.columns)
 top15    = feat_imp.nlargest(15)
 top15[::-1].plot(kind='barh', ax=axes[2], color='#4C72B0')

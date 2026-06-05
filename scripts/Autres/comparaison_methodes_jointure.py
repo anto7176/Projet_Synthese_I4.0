@@ -9,26 +9,22 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ════════════════════════════════════════════════════════════════════
-# MODÈLE
-# ════════════════════════════════════════════════════════════════════
-
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
 df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
 
-# Décalage de Y d'1 heure en arrière (la qualité à H correspond aux capteurs de H-1)
+# La qualité à H correspond aux capteurs de H-1
 df_y_decale = df_y_final.copy()
 df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)
 
-# Option 1 : join exact
+# Option 1 : join exact sur les timestamps
 df_exact = df_x_final.join(df_y_decale, how='inner')
 X_exact = df_exact.drop(columns=['quality']).astype(float)
 y_exact = df_exact['quality']
 print(f"Option 1 (join exact)     : {len(df_exact)} lignes")
 
-# Option 2 : agrégation horaire de X
+# Option 2 : agrégation horaire de X (mean, max, min, std par heure)
 df_x_tronque = df_x_final.copy()
 df_x_tronque.index = df_x_tronque.index.floor('h')
 
@@ -51,7 +47,7 @@ def evaluer(X, y, label):
     mae  = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     r2   = r2_score(y_test, y_pred)
-    print(f"\n── {label} ──")
+    print(f"\n{label}")
     print(f"R²   : {r2:.4f}")
     print(f"MAE  : {mae:.4f}")
     print(f"RMSE : {rmse:.4f}")
@@ -63,21 +59,14 @@ rf1, X_tr1, X_te1, y_tr1, y_te1, y_p1, r2_1, mae_1, rmse_1 = evaluer(X_exact, y_
 print("\n=== Entraînement Option 2 ===")
 rf2, X_tr2, X_te2, y_tr2, y_te2, y_p2, r2_2, mae_2, rmse_2 = evaluer(X_horaire, y_horaire, "Option 2 — agrégation horaire")
 
-print("\n══════════════════════════════════════")
-print("         RÉSUMÉ COMPARATIF")
-print("══════════════════════════════════════")
-print(f"{'':25} {'Option 1':>12} {'Option 2':>12}")
+print(f"\n{'':25} {'Option 1':>12} {'Option 2':>12}")
 print(f"{'Nb lignes':25} {len(df_exact):>12} {len(df_horaire):>12}")
 print(f"{'Nb features':25} {X_exact.shape[1]:>12} {X_horaire.shape[1]:>12}")
 print(f"{'R²':25} {r2_1:>12.4f} {r2_2:>12.4f}")
 print(f"{'MAE':25} {mae_1:>12.4f} {mae_2:>12.4f}")
 print(f"{'RMSE':25} {rmse_1:>12.4f} {rmse_2:>12.4f}")
-print("══════════════════════════════════════")
 
-# ════════════════════════════════════════════════════════════════════
-# AFFICHAGE
-# ════════════════════════════════════════════════════════════════════
-
+# ---- AFFICHAGE ----
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
 axes[0, 0].scatter(y_te1, y_p1, alpha=0.3, s=12, color='#4C72B0')

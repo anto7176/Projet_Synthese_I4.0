@@ -10,10 +10,6 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ════════════════════════════════════════════════════════════════════
-# MODÈLE
-# ════════════════════════════════════════════════════════════════════
-
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
@@ -37,7 +33,6 @@ X_test_scaled  = scaler.transform(X_test)
 
 lr = LinearRegression()
 lr.fit(X_train_scaled, y_train)
-print("Modèle entraîné ✓")
 
 y_pred = lr.predict(X_test_scaled)
 
@@ -45,12 +40,11 @@ mae  = mean_absolute_error(y_test, y_pred)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 r2   = r2_score(y_test, y_pred)
 
-print(f"\n── Résultats sur le test set ──")
-print(f"MAE  : {mae:.3f}")
+print(f"\nMAE  : {mae:.3f}")
 print(f"RMSE : {rmse:.3f}")
 print(f"R²   : {r2:.3f}")
 
-print("\n── 5 exemples : réel vs prédit ──")
+print("\n5 exemples : réel vs prédit")
 exemples = pd.DataFrame({
     'Quality réelle':  y_test.values[:5],
     'Quality prédite': y_pred[:5].round(1),
@@ -63,13 +57,10 @@ coef_df = pd.DataFrame({
     'coefficient': lr.coef_
 }).sort_values('coefficient', key=abs, ascending=False)
 
-print(f"\n── Coefficients (impact sur quality) ──")
+print(f"\nCoefficients (impact sur quality) :")
 print(coef_df.to_string(index=False))
 
-# ════════════════════════════════════════════════════════════════════
-# AFFICHAGE
-# ════════════════════════════════════════════════════════════════════
-
+# ---- AFFICHAGE ----
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
 axes[0].scatter(y_test, y_pred, alpha=0.3, s=12, color='#D7263D')

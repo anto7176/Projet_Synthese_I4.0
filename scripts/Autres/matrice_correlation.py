@@ -8,16 +8,12 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ════════════════════════════════════════════════════════════════════
-# MODÈLE
-# ════════════════════════════════════════════════════════════════════
-
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
 df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
 
-# Décalage de Y d'1 heure en arrière avant la fusion
+# Décalage de Y d'1 heure (la qualité à H correspond aux capteurs de H-1)
 df_y_decale = df_y_final.copy()
 df_y_decale.index = df_y_decale.index - pd.Timedelta(hours=1)
 
@@ -28,14 +24,10 @@ corr = df.corr()
 
 corr_quality = corr['quality'].drop('quality').sort_values()
 
-print("\n── Top 10 variables les plus corrélées avec quality ──")
+print("\nTop 10 variables les plus corrélées avec quality :")
 print(corr_quality.abs().sort_values(ascending=False).head(10).to_string())
 
-# ════════════════════════════════════════════════════════════════════
-# AFFICHAGE
-# ════════════════════════════════════════════════════════════════════
-
-# Figure 1 : Heatmap complète
+# ---- AFFICHAGE ----
 fig, ax = plt.subplots(figsize=(18, 14))
 
 sns.heatmap(
@@ -58,7 +50,7 @@ plt.savefig("fig_correlation_complete.png", dpi=150, bbox_inches='tight')
 plt.show()
 print("[Saved] fig_correlation_complete.png")
 
-# Figure 2 : Corrélation de chaque variable avec quality
+# Corrélation de chaque variable avec quality
 fig, ax = plt.subplots(figsize=(10, max(5, len(corr_quality) * 0.28)))
 
 colors = ['#D7263D' if v > 0 else '#4C72B0' for v in corr_quality]

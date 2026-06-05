@@ -23,6 +23,7 @@ df_q.index = df_q.index.floor('h')
 
 df = df_q.join(df_t, how='inner').dropna()
 
+# ---- AFFICHAGE ----
 fig = plt.figure(figsize=(10, 7))
 ax = fig.add_subplot(111, projection='3d')
 

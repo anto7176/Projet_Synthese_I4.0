@@ -8,9 +8,6 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ════════════════════════════════════════════════════════
-# VARIABLES 
-# ════════════════════════════════════════════════════════
 VARIABLES = [
     'T_data_3_3',
     'T_data_3_1',
@@ -23,17 +20,8 @@ VARIABLES = [
     'T_data_1_2',
     'T_data_1_1',
     'T_data_2_2',
-    # 'T_data_2_3',
-    # 'T_data_2_1',
-    # 'T_data_4_1',
-    # 'T_data_4_2',
-    # 'T_data_4_3',
-    # 'AH_data',
 ]
 
-# ════════════════════════════════════════════════════════
-# CHARGEMENT
-# ════════════════════════════════════════════════════════
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
 df_y_final = formater_index_temporel(normaliser_qualite(df_y, colonne='quality'), "date_time")
@@ -48,9 +36,6 @@ y = df['quality']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# ════════════════════════════════════════════════════════
-# MODÈLE
-# ════════════════════════════════════════════════════════
 model = XGBRegressor(
     n_estimators=1000,
     learning_rate=0.01,
@@ -66,9 +51,6 @@ model = XGBRegressor(
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
-# ════════════════════════════════════════════════════════
-# RÉSULTATS
-# ════════════════════════════════════════════════════════
 mae  = mean_absolute_error(y_test, y_pred)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 r2   = r2_score(y_test, y_pred)
@@ -78,7 +60,7 @@ print(f"\nR²   : {r2:.4f}")
 print(f"MAE  : {mae:.4f}")
 print(f"RMSE : {rmse:.4f}")
 
-print("\n── 5 exemples : réel vs prédit ──")
+print("\n5 exemples : réel vs prédit")
 exemples = pd.DataFrame({
     'Réel':   y_test.values[:5].round(1),
     'Prédit': y_pred[:5].round(1),
@@ -86,9 +68,7 @@ exemples = pd.DataFrame({
 })
 print(exemples.to_string(index=False))
 
-# ════════════════════════════════════════════════════════
-# MATRICE DE CONFUSION (tranches de 20)
-# ════════════════════════════════════════════════════════
+# ---- AFFICHAGE ----
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
@@ -101,10 +81,9 @@ y_pred_classes = pd.cut(y_pred,        bins=bins, labels=labels, include_lowest=
 
 cm = confusion_matrix(y_reel_classes, y_pred_classes, labels=labels)
 
-# Matrice en pourcentage par ligne (% de bien classés par classe réelle)
+# Normalisation par ligne pour obtenir le % par classe réelle
 cm_pct = cm.astype(float) / cm.sum(axis=1, keepdims=True) * 100
 
-# Annotations : "nb\n(xx%)"
 annots = np.array([
     [f"{cm[i,j]}\n({cm_pct[i,j]:.1f}%)" for j in range(len(labels))]
     for i in range(len(labels))

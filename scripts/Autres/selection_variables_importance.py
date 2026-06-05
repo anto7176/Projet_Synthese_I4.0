@@ -9,10 +9,6 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ════════════════════════════════════════════════════════════════════
-# MODÈLE
-# ════════════════════════════════════════════════════════════════════
-
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
@@ -26,7 +22,7 @@ y = df['quality']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Étape 1 : RF complet pour obtenir l'ordre d'importance
+# RF complet pour obtenir l'ordre d'importance des variables
 rf_full = RandomForestRegressor(n_estimators=200, min_samples_leaf=2, random_state=42, n_jobs=-1)
 rf_full.fit(X_train, y_train)
 
@@ -40,7 +36,7 @@ print("Ordre des variables par importance :")
 for i, v in enumerate(variables_triees):
     print(f"  {i+1:2d}. {v}")
 
-# Étape 2 : RF pour chaque sous-ensemble cumulatif
+# RF pour chaque sous-ensemble cumulatif de variables
 resultats = []
 
 for n in range(1, len(variables_triees) + 1):
@@ -61,12 +57,9 @@ res_df = pd.DataFrame(resultats)
 seuil_r2 = res_df['R2'].max() * 0.99
 n_seuil = res_df[res_df['R2'] >= seuil_r2]['n_vars'].min()
 
-print(f"\n→ 99% du R² max atteint avec seulement {n_seuil} variables sur {len(variables_triees)}")
+print(f"\n99% du R² max atteint avec {n_seuil} variables sur {len(variables_triees)}")
 
-# ════════════════════════════════════════════════════════════════════
-# AFFICHAGE
-# ════════════════════════════════════════════════════════════════════
-
+# ---- AFFICHAGE ----
 fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 
 axes[0].plot(res_df['n_vars'], res_df['R2'], color='#4C72B0', marker='o', markersize=5, linewidth=2)

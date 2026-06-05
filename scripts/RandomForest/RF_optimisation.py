@@ -9,10 +9,6 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Import'))
 from import_data import charger_donnees, nettoyer_donnees, normaliser_qualite, formater_index_temporel
 
-# ════════════════════════════════════════════════════════════════════
-# MODÈLE
-# ════════════════════════════════════════════════════════════════════
-
 df_x, df_y = charger_donnees("data/data_X.csv", "data/data_Y.csv")
 
 df_x_final = formater_index_temporel(nettoyer_donnees(df_x), "date_time")
@@ -38,7 +34,6 @@ print(f"R²   : {r2_base:.4f}")
 print(f"MAE  : {mae_base:.4f}")
 print(f"RMSE : {rmse_base:.4f}")
 
-# Recherche des hyperparamètres
 param_grid = {
     'n_estimators':      [100, 200, 300, 500],
     'max_depth':         [None, 10, 20, 30],
@@ -48,7 +43,7 @@ param_grid = {
     'bootstrap':         [True, False],
 }
 
-print("\n=== Recherche des hyperparamètres (patience, ça prend quelques minutes...) ===")
+print("\n=== Recherche des hyperparamètres ===")
 rf = RandomForestRegressor(random_state=42, n_jobs=-1)
 
 search = RandomizedSearchCV(
@@ -63,12 +58,11 @@ search = RandomizedSearchCV(
 )
 search.fit(X_train, y_train)
 
-print(f"\nMeilleurs paramètres trouvés :")
+print(f"\nMeilleurs paramètres :")
 for k, v in search.best_params_.items():
     print(f"  {k}: {v}")
 print(f"Meilleur R² en CV : {search.best_score_:.4f}")
 
-# Évaluation du meilleur modèle
 rf_best = search.best_estimator_
 y_pred_best = rf_best.predict(X_test)
 r2_best   = r2_score(y_test, y_pred_best)
@@ -80,19 +74,12 @@ print(f"R²   : {r2_best:.4f}")
 print(f"MAE  : {mae_best:.4f}")
 print(f"RMSE : {rmse_best:.4f}")
 
-print("\n══════════════════════════════════════════")
-print("           COMPARAISON")
-print("══════════════════════════════════════════")
-print(f"{'':20} {'Base':>10} {'Optimisé':>10} {'Gain':>10}")
+print(f"\n{'':20} {'Base':>10} {'Optimisé':>10} {'Gain':>10}")
 print(f"{'R²':20} {r2_base:>10.4f} {r2_best:>10.4f} {r2_best-r2_base:>+10.4f}")
 print(f"{'MAE':20} {mae_base:>10.4f} {mae_best:>10.4f} {mae_best-mae_base:>+10.4f}")
 print(f"{'RMSE':20} {rmse_base:>10.4f} {rmse_best:>10.4f} {rmse_best-rmse_base:>+10.4f}")
-print("══════════════════════════════════════════")
 
-# ════════════════════════════════════════════════════════════════════
-# AFFICHAGE
-# ════════════════════════════════════════════════════════════════════
-
+# ---- AFFICHAGE ----
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
 for ax, y_pred, label, color in zip(

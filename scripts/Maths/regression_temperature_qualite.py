@@ -51,6 +51,7 @@ def plot_with_band(ax, x, y_scatter, x_line, a, b, sigma, title):
     ax.set_title(title)
     ax.legend(fontsize=8)
 
+# ---- AFFICHAGE ----
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
 # Avec tous les points
@@ -71,7 +72,7 @@ print(f"Régression nettoyée : qualité = {a_c:.6f} × T_data_3_1 + {b_c:.4f}  
 
 plot_with_band(axes[1], df_clean['T_data_3_1'], df_clean['quality'],
                x_line_c, a_c, b_c, sigma_c,
-               f"Sans outliers DBSCAN (ε=0.5)  —  {n_out} retirés")
+               f"Sans outliers DBSCAN  —  {n_out} retirés")
 
 plt.suptitle("Régression linéaire : Qualité vs T_data_3_1", fontsize=13, fontweight='bold')
 plt.tight_layout()

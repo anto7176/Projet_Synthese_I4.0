@@ -34,16 +34,16 @@ print(f"Points alignés : {len(df)}")
 X = df[VARS].values
 y = df['quality'].values
 
-# ── 1. Régression linéaire ─────────────────────────────────────────────────────
+# Régression linéaire
 lin = LinearRegression().fit(X, y)
 y_lin = lin.predict(X)
 r2_lin = r2_score(y, y_lin)
 
-terms = " + ".join(f"({c:.6f}×{v})" for c, v in zip(lin.coef_, VARS))
+terms = " + ".join(f"({c:.6f}x{v})" for c, v in zip(lin.coef_, VARS))
 print(f"\n=== Linéaire  (R²={r2_lin:.4f}) ===")
 print(f"qualité = {terms} + ({lin.intercept_:.4f})")
 
-# ── 2. Régression polynomiale degré 2 ─────────────────────────────────────────
+# Régression polynomiale degré 2
 poly_model = make_pipeline(PolynomialFeatures(degree=2, include_bias=False), LinearRegression())
 poly_model.fit(X, y)
 y_poly = poly_model.predict(X)
@@ -53,57 +53,54 @@ feat_names = poly_model.named_steps['polynomialfeatures'].get_feature_names_out(
 coefs = poly_model.named_steps['linearregression'].coef_
 intercept_poly = poly_model.named_steps['linearregression'].intercept_
 print(f"\n=== Polynomiale degré 2  (R²={r2_poly:.4f}) ===")
-terms_poly = " + ".join(f"({c:.4f}×{n})" for c, n in zip(coefs, feat_names))
+terms_poly = " + ".join(f"({c:.4f}x{n})" for c, n in zip(coefs, feat_names))
 print(f"qualité = {terms_poly} + ({intercept_poly:.4f})")
 
-# ── 3. Régression exponentielle  (log-linéaire) ───────────────────────────────
-# Modèle : quality = exp(a·X + b)  →  on régresse sur log(quality)
-y_clipped = np.clip(y, 0.01, None)  # éviter log(0)
+# Régression exponentielle (log-linéaire) : quality = exp(a·X + b)
+y_clipped = np.clip(y, 0.01, None)
 log_y = np.log(y_clipped)
 
 exp_lin = LinearRegression().fit(X, log_y)
 y_exp = np.exp(exp_lin.predict(X))
 r2_exp = r2_score(y, y_exp)
 
-terms_exp = " + ".join(f"({c:.6f}×{v})" for c, v in zip(exp_lin.coef_, VARS))
+terms_exp = " + ".join(f"({c:.6f}x{v})" for c, v in zip(exp_lin.coef_, VARS))
 print(f"\n=== Exponentielle  (R²={r2_exp:.4f}) ===")
 print(f"qualité = exp({terms_exp} + ({exp_lin.intercept_:.4f}))")
 
-# ── 4. Régression de Poisson ──────────────────────────────────────────────────
-# Poisson requiert y > 0 ; on ajoute un epsilon et on normalise dans [1, 101]
+# Régression de Poisson (requiert y > 0)
 y_poisson = y + 1.0
 poisson = PoissonRegressor(max_iter=500).fit(X, y_poisson)
 y_pois = poisson.predict(X) - 1.0
 r2_pois = r2_score(y, y_pois)
 
-terms_pois = " + ".join(f"({c:.6f}×{v})" for c, v in zip(poisson.coef_, VARS))
+terms_pois = " + ".join(f"({c:.6f}x{v})" for c, v in zip(poisson.coef_, VARS))
 print(f"\n=== Poisson  (R²={r2_pois:.4f}) ===")
 print(f"qualité = exp({terms_pois} + ({poisson.intercept_:.4f})) - 1")
 
-# ── 5. S-Curve (sigmoïde / logit-linéaire) ────────────────────────────────────
-# Modèle : quality = 100 * sigmoid(a·X + b)  →  on régresse sur logit(quality/100)
+# S-Curve (logit-linéaire) : quality = 100 × sigmoid(a·X + b)
 y_norm = np.clip(y / 100, 0.001, 0.999)
 scurve_lin = LinearRegression().fit(X, logit(y_norm))
 y_scurve = 100 * expit(scurve_lin.predict(X))
 r2_scurve = r2_score(y, y_scurve)
 
-terms_sc = " + ".join(f"({c:.6f}×{v})" for c, v in zip(scurve_lin.coef_, VARS))
+terms_sc = " + ".join(f"({c:.6f}x{v})" for c, v in zip(scurve_lin.coef_, VARS))
 print(f"\n=== S-Curve  (R²={r2_scurve:.4f}) ===")
-print(f"qualité = 100 × sigmoid({terms_sc} + ({scurve_lin.intercept_:.4f}))")
+print(f"qualité = 100 x sigmoid({terms_sc} + ({scurve_lin.intercept_:.4f}))")
 
-# ── 6. Lasso (régression linéaire + régularisation L1) ────────────────────────
+# Lasso (régression linéaire + régularisation L1)
 lasso = Lasso(alpha=0.1, max_iter=5000).fit(X, y)
 y_lasso = lasso.predict(X)
 r2_lasso = r2_score(y, y_lasso)
 
-terms_lasso = " + ".join(f"({c:.6f}×{v})" for c, v in zip(lasso.coef_, VARS))
+terms_lasso = " + ".join(f"({c:.6f}x{v})" for c, v in zip(lasso.coef_, VARS))
 print(f"\n=== Lasso (α=0.1)  (R²={r2_lasso:.4f}) ===")
 print(f"qualité = {terms_lasso} + ({lasso.intercept_:.4f})")
 zero_coefs = [v for c, v in zip(lasso.coef_, VARS) if c == 0]
 if zero_coefs:
     print(f"  Variables annulées par Lasso : {zero_coefs}")
 
-# ── Figure : Prédit vs Réel pour les 6 modèles ────────────────────────────────
+# ---- AFFICHAGE ----
 models_results = [
     ("Linéaire",          y_lin,    r2_lin,    '#4C72B0'),
     ("Polynomiale (d=2)", y_poly,   r2_poly,   '#55A868'),
@@ -128,16 +125,14 @@ for ax, (name, y_pred, r2, color) in zip(axes.flat, models_results):
 plt.tight_layout()
 plt.show()
 
-# ── Figure S-Curve détaillée avec plage d'erreur ──────────────────────────────
+# S-Curve détaillée avec plage d'erreur
 residuals = y_scurve - y
 sigma = residuals.std()
 
-# Trier par qualité réelle pour tracer une courbe lisse
 order = np.argsort(y)
 y_sorted = y[order]
 y_pred_sorted = y_scurve[order]
 
-# Moyenne glissante de la prédiction (fenêtre = 200 pts) pour la courbe centrale
 window = 200
 y_pred_smooth = np.convolve(y_pred_sorted, np.ones(window) / window, mode='valid')
 y_real_smooth = np.convolve(y_sorted, np.ones(window) / window, mode='valid')
@@ -158,7 +153,6 @@ ax.legend(fontsize=9)
 plt.tight_layout()
 plt.show()
 
-# Récapitulatif
 print("\n=== Récapitulatif R² ===")
 for name, _, r2, _ in models_results:
     print(f"  {name:<22} R² = {r2:.4f}")
