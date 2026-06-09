@@ -11,14 +11,11 @@ from xgboost import XGBRegressor
 import sys, os
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-os.chdir(BASE_DIR)  # nécessaire pour les chemins relatifs dans import_data_matrice
+os.chdir(BASE_DIR)
 
 sys.path.insert(0, os.path.join(BASE_DIR, 'scripts', 'Import'))
 from import_data_matrice import data_X_formatee, data_Y_formatee
 
-# ════════════════════════════════════════════════════════
-# CHARGEMENT & PRÉPARATION  (process matrix, sans lags)
-# ════════════════════════════════════════════════════════
 if data_X_formatee is None:
     raise RuntimeError("Impossible de charger la process matrix. Vérifiez les fichiers data/.")
 
@@ -27,8 +24,7 @@ y = data_Y_formatee
 
 print(f"\nDataset (process matrix) : {len(X)} lignes | {X.shape[1]} features\n")
 
-# ── Découpage TEMPOREL (chronologique) — cohérent avec le pipeline final ──
-# On entraîne sur le passé (80%), on teste sur le futur (20%), sans mélanger.
+# Split temporel (chronologique) : on entraîne sur le passé, on teste sur le futur
 n = len(X)
 i_test = int(n * 0.8)
 X_train, X_test = X.iloc[:i_test], X.iloc[i_test:]
@@ -38,10 +34,7 @@ scaler = StandardScaler()
 X_train_s = scaler.fit_transform(X_train)
 X_test_s  = scaler.transform(X_test)
 
-# ════════════════════════════════════════════════════════
-# MODÈLES
-# (True = utilise les données normalisées)
-# ════════════════════════════════════════════════════════
+# True = données normalisées requises (modèles linéaires)
 models = {
     "Régression\nLinéaire":    (LinearRegression(), True),
     "Ridge":                   (Ridge(alpha=1.0), True),
@@ -56,12 +49,9 @@ models = {
                                               random_state=42, verbosity=0), False),
 }
 
-# ════════════════════════════════════════════════════════
-# ENTRAÎNEMENT & ÉVALUATION
-# ════════════════════════════════════════════════════════
 results = {}
 print(f"{'Modèle':<25} {'R²':>8} {'MAE':>8} {'RMSE':>8}")
-print("─" * 53)
+print("-" * 53)
 
 for name, (model, use_scaled) in models.items():
     label = name.replace('\n', ' ')
@@ -78,23 +68,15 @@ for name, (model, use_scaled) in models.items():
     results[name] = {"R²": r2, "MAE": mae, "RMSE": rmse}
     print(f"{label:<25} {r2:>8.4f} {mae:>8.2f} {rmse:>8.2f}")
 
-# ════════════════════════════════════════════════════════
-# FIGURE
-# ════════════════════════════════════════════════════════
-names     = list(results.keys())
-r2_vals   = [results[n]["R²"]   for n in names]
-mae_vals  = [results[n]["MAE"]  for n in names]
-rmse_vals = [results[n]["RMSE"] for n in names]
-
-# Tri par R² décroissant
-order     = np.argsort(r2_vals)[::-1]
-names_s   = [names[i]     for i in order]
-r2_s      = [r2_vals[i]   for i in order]
-mae_s     = [mae_vals[i]  for i in order]
-rmse_s    = [rmse_vals[i] for i in order]
+# ---- AFFICHAGE ----
+data    = sorted(results.items(), key=lambda x: x[1]["R²"], reverse=True)
+names_s = [n         for n, _ in data]
+r2_s    = [v["R²"]   for _, v in data]
+mae_s   = [v["MAE"]  for _, v in data]
+rmse_s  = [v["RMSE"] for _, v in data]
 
 PALETTE = ["#2ecc71", "#27ae60", "#f1c40f", "#e67e22", "#e74c3c", "#c0392b"]
-colors   = [PALETTE[i] for i in range(len(names_s))]
+colors  = PALETTE[:len(names_s)]
 
 fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 fig.suptitle(
@@ -102,7 +84,6 @@ fig.suptitle(
     fontsize=13, fontweight='bold', y=1.01
 )
 
-# ── Subplot 1 : R² ──────────────────────────────────────
 ax1 = axes[0]
 bars = ax1.bar(names_s, r2_s, color=colors, edgecolor='white', linewidth=0.6, zorder=3)
 ax1.set_ylim(max(0, min(r2_s) - 0.05), 1.02)
@@ -121,7 +102,6 @@ for bar, val in zip(bars, r2_s):
         ha='center', va='bottom', fontsize=9, fontweight='bold'
     )
 
-# ── Subplot 2 : MAE & RMSE ──────────────────────────────
 ax2 = axes[1]
 x   = np.arange(len(names_s))
 w   = 0.35
@@ -146,7 +126,7 @@ for bar in list(b1) + list(b2):
     )
 
 plt.tight_layout()
-out_path = os.path.join(BASE_DIR, "fig_comparaison_modeles.png")
+out_path = os.path.join(BASE_DIR, "fig_comparaison_modeles_process_matrix.png")
 plt.savefig(out_path, dpi=150, bbox_inches='tight')
 plt.show()
 print(f"\n[Saved] {out_path}")

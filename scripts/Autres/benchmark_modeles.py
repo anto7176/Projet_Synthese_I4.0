@@ -73,19 +73,14 @@ for name, (model, use_scaled) in models.items():
     print(f"{label:<25} {r2:>8.4f} {mae:>8.2f} {rmse:>8.2f}")
 
 # ---- AFFICHAGE ----
-names     = list(results.keys())
-r2_vals   = [results[n]["R²"]   for n in names]
-mae_vals  = [results[n]["MAE"]  for n in names]
-rmse_vals = [results[n]["RMSE"] for n in names]
-
-order     = np.argsort(r2_vals)[::-1]
-names_s   = [names[i]     for i in order]
-r2_s      = [r2_vals[i]   for i in order]
-mae_s     = [mae_vals[i]  for i in order]
-rmse_s    = [rmse_vals[i] for i in order]
+data    = sorted(results.items(), key=lambda x: x[1]["R²"], reverse=True)
+names_s = [n         for n, _ in data]
+r2_s    = [v["R²"]   for _, v in data]
+mae_s   = [v["MAE"]  for _, v in data]
+rmse_s  = [v["RMSE"] for _, v in data]
 
 PALETTE = ["#2ecc71", "#27ae60", "#f1c40f", "#e67e22", "#e74c3c", "#c0392b"]
-colors   = [PALETTE[i] for i in range(len(names_s))]
+colors  = PALETTE[:len(names_s)]
 
 fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 fig.suptitle(

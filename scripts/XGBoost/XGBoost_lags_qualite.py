@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import joblib
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
@@ -58,16 +59,10 @@ print(f"MAE  : {mae:.4f}")
 print(f"RMSE : {rmse:.4f}")
 
 sample_idx = np.linspace(0, len(y_test) - 1, 10, dtype=int)
-print("\n" + "-" * 42)
-print(f"{'#':>3}  {'Réelle':>8}  {'Prédite':>8}  {'Écart':>8}")
-print("-" * 42)
+print(f"\n{'#':>3}  {'Réelle':>8}  {'Prédite':>8}  {'Écart':>8}")
 for i, idx in enumerate(sample_idx):
-    real = float(y_test.iloc[idx])
-    pred = float(y_pred[idx])
-    diff = pred - real
-    sign = "+" if diff >= 0 else ""
-    print(f"{i+1:>3}  {real:>8.2f}  {pred:>8.2f}  {sign}{diff:>7.2f}")
-print("-" * 42)
+    real, pred = float(y_test.iloc[idx]), float(y_pred[idx])
+    print(f"{i+1:>3}  {real:>8.2f}  {pred:>8.2f}  {pred-real:>+8.2f}")
 
 feat_imp = pd.Series(model.feature_importances_, index=X_train.columns)
 lag_cols = ['quality_lag1', 'quality_lag2']
@@ -88,5 +83,4 @@ plt.tight_layout()
 plt.savefig("fig_XGBoost_lags.png", dpi=150, bbox_inches='tight')
 plt.show()
 
-import joblib
 joblib.dump(model, os.path.join(os.path.dirname(__file__), 'xgboost_model.pkl'))

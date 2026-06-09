@@ -51,13 +51,13 @@ def evaluer(X, y, label):
     print(f"R²   : {r2:.4f}")
     print(f"MAE  : {mae:.4f}")
     print(f"RMSE : {rmse:.4f}")
-    return rf, X_train, X_test, y_train, y_test, y_pred, r2, mae, rmse
+    return y_test, y_pred, r2, mae, rmse
 
 print("\n=== Entraînement Option 1 ===")
-rf1, X_tr1, X_te1, y_tr1, y_te1, y_p1, r2_1, mae_1, rmse_1 = evaluer(X_exact, y_exact, "Option 1 — join exact")
+y_te1, y_p1, r2_1, mae_1, rmse_1 = evaluer(X_exact, y_exact, "Option 1 — join exact")
 
 print("\n=== Entraînement Option 2 ===")
-rf2, X_tr2, X_te2, y_tr2, y_te2, y_p2, r2_2, mae_2, rmse_2 = evaluer(X_horaire, y_horaire, "Option 2 — agrégation horaire")
+y_te2, y_p2, r2_2, mae_2, rmse_2 = evaluer(X_horaire, y_horaire, "Option 2 — agrégation horaire")
 
 print(f"\n{'':25} {'Option 1':>12} {'Option 2':>12}")
 print(f"{'Nb lignes':25} {len(df_exact):>12} {len(df_horaire):>12}")

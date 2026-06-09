@@ -85,7 +85,7 @@ axes[0].set_title("Matrice de confusion")
 
 # Importance des features
 feat_imp = pd.Series(model.feature_importances_, index=FEATURES)
-feat_imp.sort_values()[::-1].plot(kind='barh', ax=axes[1], color='#4C72B0')
+feat_imp.sort_values(ascending=False).plot(kind='barh', ax=axes[1], color='#4C72B0')
 axes[1].set_title("Importance des variables")
 axes[1].set_xlabel("Importance")
 

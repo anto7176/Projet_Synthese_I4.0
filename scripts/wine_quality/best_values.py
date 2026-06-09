@@ -23,4 +23,4 @@ print("=" * 55)
 for feat in FEATURES:
     print(f"{feat:<22} : {bons[feat].median():.3f}")
 print("=" * 55)
-print(f"(basé sur {len(bons)} vins notés >= 7)")
+print(f"(basé sur {len(bons)} vins notés >= 8.5)")
