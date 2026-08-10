@@ -1,148 +1,89 @@
-# Projet\_Synthese\_I4.0
+# Torréfaction intelligente : optimisation de la qualité de production (Industrie 4.0)
 
+Projet de synthèse réalisé en binôme (4 semaines) dans le cadre de la spécialisation Industrie 4.0 à l'ESEO.
 
+## Contexte
 
+La torréfaction du café est un procédé thermique réparti sur **5 chambres** et instrumenté de **17 capteurs**. La qualité du produit est mesurée en sortie de machine.
 
+**Problématique :** comment optimiser la qualité d'une production de café torréfié à partir des données capteurs ?
 
-Essayer de trouver comment la variable "Quality" est calculée
+## Démarche
 
-Regarder si une variable peut être enlever pour l'aspect écologique (diagramme de Pareto)
+1. **Exploration et nettoyage** des données de production issues des capteurs.
+2. **Analyse des corrélations** entre les variables du procédé et la qualité finale.
+3. **Sélection de variables** via un diagramme de Pareto, avec une réflexion sur la réduction du nombre de capteurs utiles (enjeu écologique et économique).
+4. **Comparaison de plusieurs modèles** de prédiction (Random Forest, XGBoost et autres), ainsi qu'une approche par modèle de langage (LLM).
+5. **Optimisation** des hyperparamètres et introduction de variables retardées pour affiner les prédictions.
 
+Le modèle **XGBoost** s'est révélé le plus performant et a été retenu.
 
+## Approche par variables retardées
 
-R²   : 0.9263
+Une piste explorée : utiliser la qualité mesurée aux heures précédentes pour estimer la qualité à l'instant T.
 
-MAE  : 3.1831
+Corrélation entre la qualité à l'instant T et aux instants antérieurs :
 
-RMSE : 4.4452
+| Décalage | Corrélation |
+|----------|-------------|
+| T − 1 h  | 0.964 |
+| T − 2 h  | 0.895 |
+| T − 3 h  | 0.809 |
+| T − 6 h  | 0.545 |
+| T − 12 h | 0.216 |
+| T − 24 h | 0.025 |
 
+La corrélation reste très forte sur les 1 à 3 dernières heures, ce qui justifie l'ajout des valeurs T−1 et T−2 comme variables d'entrée.
 
+> Hypothèse retenue : les mesures sont réalisées juste après chaque fin de cycle, et à l'instant T0 le résultat de qualité de T−1 est déjà disponible.
 
-R²   : 0.9598
+## Résultats
 
-MAE  : 2.3060
+Progression des performances au fil des itérations :
 
-RMSE : 3.2835
+| Version | R² | MAE | RMSE |
+|---------|-----|-----|------|
+| Modèle initial | 0.926 | 3.18 | 4.45 |
+| Modèle optimisé | 0.960 | 2.31 | 3.28 |
+| + variables retardées (T−1, T−2) | 0.973 | 1.98 | 2.73 |
+| **Modèle final (jeu de test)** | **0.976** | **1.92** | **2.58** |
 
+Le modèle final atteint un **R² de 0,976**, soit une erreur moyenne d'environ **5 sur l'échelle réelle de qualité**. Il est exploitable comme outil d'aide à la décision pour piloter la qualité en production.
 
+## Modèle final
 
-Corrélation quality(t) vs quality(t-n) :
-
-&#x20; h -  1h : 0.964
-
-&#x20; h -  2h : 0.895
-
-&#x20; h -  3h : 0.809
-
-&#x20; h -  6h : 0.545
-
-&#x20; h - 12h : 0.216
-
-&#x20; h - 24h : 0.025
-
-Pouvons nous utiliser les résultats de Qualité des heures précédentes pour estimée celle à un instant T ?
-
-Si oui, il faut faire l'hypothèse que les mesures sont réalisées directement après chaque fin de cycle et que a H0, le résultat de la qualité H-1 est déjà disponible.
-
-
-
-En utilisant les H-1 et H-2 : R² = 0.9726, MAE  : 1.9815, RMSE : 2.7334 avec ces param :
-
-model =
-
+```python
 XGBRegressor(
-
-&#x20;   n\_estimators=3000,
-
-&#x20;   learning\_rate=0.01,
-
-&#x20;   max\_depth=7,
-
-&#x20;   subsample=0.7,
-
-&#x20;   colsample\_bytree=0.3,
-
-&#x20;   min\_child\_weight=3,
-
-&#x20;   early\_stopping\_rounds=50,
-
-&#x20;   random\_state=42,
-
-&#x20;   verbosity=0,
-
-&#x20;   tree\_method='hist',
-
-&#x20;   device='cuda'
-
+    n_estimators=1306,        # via early stopping
+    learning_rate=0.0214,
+    max_depth=6,
+    subsample=0.5865,
+    colsample_bytree=0.8168,
+    min_child_weight=4,
+    gamma=2.4197,
+    reg_alpha=3.36e-05,
+    reg_lambda=4.35e-08,
+    tree_method='hist',
+    device='cuda',
+    random_state=42,
 )
+# n_lags = 2 (variables retardées T-1 et T-2)
+```
 
+## Technologies
 
+Python · XGBoost · scikit-learn · pandas · Machine Learning · Science des données
 
-faire intervalle pour le XGBoost
+## Contenu du dépôt
 
-essayer de trouver pk sa montre, pk sa baisse
+- `scripts/` : chaîne de traitement et scripts de modélisation
+- `figures/` : graphiques et visualisations
+- `Poster_ProjetI4.0.pdf` : poster de présentation du projet
+- `Presentation_ProjetDeSythese_I4_0.pdf` : présentation technique
+- `Planning_previsionnel.xlsx` : planning prévisionnel du projet
 
-voir si lien avec les mois de l'année(temp,humidite)
+## Pistes d'amélioration
 
-
-
-
-
-
-
-
-
-
-
-hyperparametre : MEILLEURS PARAMÈTRES  (RMSE val = 2.3693)
-
-═══════════════════════════════════════════════════════
-
-&#x20; n\_lags          : 2
-
-&#x20; n\_estimators    : 1306  (via early stopping)
-
-&#x20; learning\_rate         : 0.0214113
-
-&#x20; max\_depth             : 6
-
-&#x20; subsample             : 0.586508
-
-&#x20; colsample\_bytree      : 0.816817
-
-&#x20; min\_child\_weight      : 4
-
-&#x20; gamma                 : 2.41974
-
-&#x20; reg\_alpha             : 3.35611e-05
-
-&#x20; reg\_lambda            : 4.34695e-08
-
-═══════════════════════════════════════════════════════
-
-
-
-Entraînement du modèle final (train + val)...
-
-
-
-── Résultats sur jeu de test ──
-
-R²   : 0.9755
-
-MAE  : 1.9168 = 5.09 échelle réelle
-
-RMSE : 2.5842
-
-
-
-
-
-Pour le poster, enlever la temp pour les valeurs cles et la emttre a la fin pour percuter
-
-cahnger la problematique en mode : comment ameliorer une production de café
-
-rajouter des grains de café en image
-
-
-
+- Ajouter un intervalle de confiance aux prédictions XGBoost.
+- Analyser les causes des hausses et baisses de qualité dans le temps.
+- Étudier le lien éventuel avec la saisonnalité (température, humidité selon les mois).
